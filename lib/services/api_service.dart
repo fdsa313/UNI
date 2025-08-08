@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // 테스트용 서버 URL
-  static const String baseUrl = 'http://localhost:3000/api';
+  // 실제 서버 URL
+  static const String baseUrl = 'https://alzheimerunithon.onrender.com';
   
   // 로그인 API
   static Future<Map<String, dynamic>> login(String email, String password) async {
