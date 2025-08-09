@@ -23,16 +23,118 @@ class _HomeScreenState extends State<HomeScreen> {
     'lunch': false,
     'evening': false,
   };
+  
+  // 타이머 관련 변수들
+  Timer? _timer;
+  String _nextMedicationTime = '';
+  String _remainingTime = '';
 
   // 사용자 이름을 가져오는 함수 (실제로는 데이터베이스에서 가져옴)
   String get _userName {
     return widget.userName ?? '돌쇠님'; // 기본값은 '돌쇠님'
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _updateNextMedicationTime();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  // 다음 복용 시간 계산
+  void _updateNextMedicationTime() {
+    final now = DateTime.now();
+    final currentTime = TimeOfDay.fromDateTime(now);
+    
+    // 복용 시간들 (실제로는 설정에서 가져와야 함)
+    final morningTime = const TimeOfDay(hour: 8, minute: 0);
+    final lunchTime = const TimeOfDay(hour: 12, minute: 0);
+    final eveningTime = const TimeOfDay(hour: 18, minute: 0);
+    
+    TimeOfDay nextTime;
+    String timeKey;
+    
+    if (currentTime.hour < morningTime.hour || 
+        (currentTime.hour == morningTime.hour && currentTime.minute < morningTime.minute)) {
+      nextTime = morningTime;
+      timeKey = 'morning';
+    } else if (currentTime.hour < lunchTime.hour || 
+               (currentTime.hour == lunchTime.hour && currentTime.minute < lunchTime.minute)) {
+      nextTime = lunchTime;
+      timeKey = 'lunch';
+    } else if (currentTime.hour < eveningTime.hour || 
+               (currentTime.hour == eveningTime.hour && currentTime.minute < eveningTime.minute)) {
+      nextTime = eveningTime;
+      timeKey = 'evening';
+    } else {
+      // 오늘의 모든 복용이 완료된 경우, 내일 아침으로 설정
+      nextTime = morningTime;
+      timeKey = 'morning';
+    }
+    
+    // 이미 복용한 경우 다음 시간으로
+    if (_medicationStatus[timeKey] == true) {
+      if (timeKey == 'morning') {
+        nextTime = lunchTime;
+        timeKey = 'lunch';
+      } else if (timeKey == 'lunch') {
+        nextTime = eveningTime;
+        timeKey = 'evening';
+      } else {
+        nextTime = morningTime;
+        timeKey = 'morning';
+      }
+    }
+    
+    _nextMedicationTime = '${nextTime.hour.toString().padLeft(2, '0')}:${nextTime.minute.toString().padLeft(2, '0')}';
+    _calculateRemainingTime(nextTime);
+  }
+
+  // 남은 시간 계산
+  void _calculateRemainingTime(TimeOfDay nextTime) {
+    final now = DateTime.now();
+    final nextDateTime = DateTime(now.year, now.month, now.day, nextTime.hour, nextTime.minute);
+    
+    // 다음 복용 시간이 오늘인지 내일인지 확인
+    DateTime targetDateTime;
+    if (nextDateTime.isBefore(now)) {
+      // 오늘 시간이 지났으면 내일로 설정
+      targetDateTime = nextDateTime.add(const Duration(days: 1));
+    } else {
+      targetDateTime = nextDateTime;
+    }
+    
+    final difference = targetDateTime.difference(now);
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes % 60;
+    
+    if (hours > 0) {
+      _remainingTime = '${hours}시간 ${minutes}분';
+    } else {
+      _remainingTime = '${minutes}분';
+    }
+    
+    setState(() {});
+  }
+
+  // 타이머 시작
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _updateNextMedicationTime();
+    });
+  }
+
   void _onMedicationTaken(String time) {
     setState(() {
       _medicationStatus[time] = true;
     });
+    _updateNextMedicationTime(); // 복용 후 다음 시간 업데이트
   }
 
   void _onMoodSelected(String mood) {
@@ -252,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   _medicationStatus.values.every((taken) => taken)
                                       ? '오늘의 복용이 완료되었습니다!'
-                                      : '저녁 복용까지 0시간 6분 남았습니다',
+                                      : '${_nextMedicationTime}까지 ${_remainingTime} 남았습니다',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF8D6E63),
