@@ -133,6 +133,38 @@ class ApiService {
     }
   }
 
+  // 담당의사 번호 저장
+  static Future<bool> saveDoctorPhone(String doctorPhone) async {
+    try {
+      final userData = await getUserData();
+      if (userData != null) {
+        userData['doctorPhone'] = doctorPhone;
+        await _saveUserData(userData);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('담당의사 번호 저장 실패: $e');
+      return false;
+    }
+  }
+
+  // 긴급 연락처 저장
+  static Future<bool> saveEmergencyContacts(List<Map<String, String>> contacts) async {
+    try {
+      final userData = await getUserData();
+      if (userData != null) {
+        userData['emergencyContacts'] = contacts;
+        await _saveUserData(userData);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('긴급 연락처 저장 실패: $e');
+      return false;
+    }
+  }
+
   // 약물 정보 가져오기
   static Future<List<Map<String, dynamic>>> getMedications() async {
     try {

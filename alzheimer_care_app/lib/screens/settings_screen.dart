@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_termination_screen.dart';
+import '../services/api_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   final String? userName;
@@ -9,6 +10,49 @@ class SettingsScreen extends StatelessWidget {
   // 사용자 이름을 가져오는 함수
   String get _userName {
     return userName ?? '돌쇠님';
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('로그아웃'),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('현재 계정에서 로그아웃하시겠습니까?'),
+              SizedBox(height: 8),
+              Text(
+                '로그아웃하면 로그인 화면으로 이동합니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await ApiService.logout();
+                Navigator.of(context).pushReplacementNamed('/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB74D),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('로그아웃'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showAppTerminationDialog(BuildContext context) {
@@ -141,132 +185,145 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '앱 설정',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFE65100),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '앱 설정',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFE65100),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
-                        // 알림 설정
-                        _buildSettingItem(
-                          icon: Icons.notifications,
-                          title: '알림 설정',
-                          subtitle: '약 복용 알림 및 기타 알림',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('알림 설정 기능은 준비 중입니다.'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          },
-                        ),
+                          // 알림 설정
+                          _buildSettingItem(
+                            icon: Icons.notifications,
+                            title: '알림 설정',
+                            subtitle: '약 복용 알림 및 기타 알림',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('알림 설정 기능은 준비 중입니다.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
+                          ),
 
-                        const Divider(),
+                          const Divider(),
 
-                        // 소리 설정
-                        _buildSettingItem(
-                          icon: Icons.volume_up,
-                          title: '소리 설정',
-                          subtitle: '알림음 및 볼륨 조절',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('소리 설정 기능은 준비 중입니다.'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          },
-                        ),
+                          // 소리 설정
+                          _buildSettingItem(
+                            icon: Icons.volume_up,
+                            title: '소리 설정',
+                            subtitle: '알림음 및 볼륨 조절',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('소리 설정 기능은 준비 중입니다.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
+                          ),
 
-                        const Divider(),
+                          const Divider(),
 
-                        // 화면 밝기
-                        _buildSettingItem(
-                          icon: Icons.brightness_6,
-                          title: '화면 밝기',
-                          subtitle: '자동 밝기 조절',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('화면 밝기 설정 기능은 준비 중입니다.'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          },
-                        ),
+                          // 화면 밝기
+                          _buildSettingItem(
+                            icon: Icons.brightness_6,
+                            title: '화면 밝기',
+                            subtitle: '자동 밝기 조절',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('화면 밝기 설정 기능은 준비 중입니다.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
+                          ),
 
-                        const Divider(),
+                          const Divider(),
 
-                        // 언어 설정
-                        _buildSettingItem(
-                          icon: Icons.language,
-                          title: '언어 설정',
-                          subtitle: '한국어',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('언어 설정 기능은 준비 중입니다.'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          },
-                        ),
+                          // 언어 설정
+                          _buildSettingItem(
+                            icon: Icons.language,
+                            title: '언어 설정',
+                            subtitle: '한국어',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('언어 설정 기능은 준비 중입니다.'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                            },
+                          ),
 
-                        const Divider(),
+                          const Divider(),
 
-                        // 앱 정보
-                        _buildSettingItem(
-                          icon: Icons.info,
-                          title: '앱 정보',
-                          subtitle: '버전 1.0.0',
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: const Text('앱 정보'),
-                                  content: const Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('알츠하이머 케어 앱'),
-                                      SizedBox(height: 8),
-                                      Text('버전: 1.0.0'),
-                                      Text('개발: UNI 팀'),
-                                      Text('목적: 알츠하이머 환자 케어'),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(),
-                                      child: const Text('확인'),
+                          // 앱 정보
+                          _buildSettingItem(
+                            icon: Icons.info,
+                            title: '앱 정보',
+                            subtitle: '버전 1.0.0',
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('앱 정보'),
+                                    content: const Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('알츠하이머 케어 앱'),
+                                        SizedBox(height: 8),
+                                        Text('버전: 1.0.0'),
+                                        Text('개발: UNI 팀'),
+                                        Text('목적: 알츠하이머 환자 케어'),
+                                      ],
                                     ),
-                                  ],
-                                );
-                              },
-                            );
-                          },
-                        ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(),
+                                        child: const Text('확인'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
 
-                        const Divider(),
+                          const Divider(),
 
-                        // 앱 종료
-                        _buildSettingItem(
-                          icon: Icons.exit_to_app,
-                          title: '앱 종료',
-                          subtitle: '가족 영상과 함께 앱 종료',
-                          onTap: () => _showAppTerminationDialog(context),
-                          isDestructive: true,
-                        ),
-                      ],
+                          // 로그아웃
+                          _buildSettingItem(
+                            icon: Icons.logout,
+                            title: '로그아웃',
+                            subtitle: '현재 계정에서 로그아웃',
+                            onTap: () => _showLogoutDialog(context),
+                            isDestructive: false,
+                          ),
+
+                          const Divider(),
+
+                          // 앱 종료
+                          _buildSettingItem(
+                            icon: Icons.exit_to_app,
+                            title: '앱 종료',
+                            subtitle: '가족 영상과 함께 앱 종료',
+                            onTap: () => _showAppTerminationDialog(context),
+                            isDestructive: true,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

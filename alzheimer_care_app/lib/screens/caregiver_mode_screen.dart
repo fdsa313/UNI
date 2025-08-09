@@ -1,13 +1,301 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
-class CaregiverModeScreen extends StatelessWidget {
-  final String? userName; // 사용자 이름을 받을 수 있도록 추가
+class CaregiverModeScreen extends StatefulWidget {
+  final String? userName;
   
   const CaregiverModeScreen({super.key, this.userName});
 
+  @override
+  State<CaregiverModeScreen> createState() => _CaregiverModeScreenState();
+}
+
+class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
+  Map<String, dynamic>? _userData;
+  bool _isLoading = true;
+  final _doctorPhoneController = TextEditingController();
+  List<Map<String, String>> _emergencyContacts = [];
+
   // 사용자 이름을 가져오는 함수
   String get _userName {
-    return userName ?? '돌쇠님'; // 기본값은 '돌쇠님'
+    return widget.userName ?? '돌쇠님';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  @override
+  void dispose() {
+    _doctorPhoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userData = await ApiService.getUserData();
+      setState(() {
+        _userData = userData;
+        _isLoading = false;
+      });
+      // 담당의사 번호가 있으면 컨트롤러에 설정
+      if (userData != null && userData['doctorPhone'] != null) {
+        _doctorPhoneController.text = userData['doctorPhone'];
+      }
+      // 긴급 연락처 로드
+      _loadEmergencyContacts();
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _loadEmergencyContacts() {
+    if (_userData != null && _userData!['emergencyContacts'] != null) {
+      final contacts = _userData!['emergencyContacts'] as List;
+      _emergencyContacts = contacts.map((contact) => Map<String, String>.from(contact)).toList();
+    } else {
+      // 기본 긴급 연락처 설정
+      _emergencyContacts = [
+        {'name': '119', 'phone': '119'},
+        {'name': '경찰서', 'phone': '112'},
+      ];
+    }
+  }
+
+  void _showDoctorPhoneDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('담당의사 번호 설정'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '환자의 담당의사 연락처를 설정해주세요.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _doctorPhoneController,
+                decoration: const InputDecoration(
+                  labelText: '담당의사 번호',
+                  hintText: '010-0000-0000',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _saveDoctorPhone();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB74D),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _saveDoctorPhone() async {
+    try {
+      final success = await ApiService.saveDoctorPhone(_doctorPhoneController.text);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('담당의사 번호가 저장되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // 사용자 데이터 다시 로드
+        await _loadUserData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('저장에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('저장에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showEmergencyContactsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('긴급 연락처 관리'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _emergencyContacts.length,
+                    itemBuilder: (context, index) {
+                      final contact = _emergencyContacts[index];
+                      return ListTile(
+                        title: Text(contact['name'] ?? ''),
+                        subtitle: Text(contact['phone'] ?? ''),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              _emergencyContacts.removeAt(index);
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _showAddContactDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFB74D),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('연락처 추가'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _saveEmergencyContacts();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB74D),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showAddContactDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('긴급 연락처 추가'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: '연락처 이름',
+                  hintText: '예: 이웃집 김씨',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: '전화번호',
+                  hintText: '010-0000-0000',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty && phoneController.text.isNotEmpty) {
+                  setState(() {
+                    _emergencyContacts.add({
+                      'name': nameController.text,
+                      'phone': phoneController.text,
+                    });
+                  });
+                  Navigator.of(context).pop();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFB74D),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('추가'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _saveEmergencyContacts() async {
+    try {
+      final success = await ApiService.saveEmergencyContacts(_emergencyContacts);
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('긴급 연락처가 저장되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _loadUserData();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('저장에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('저장에 실패했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -131,6 +419,13 @@ class CaregiverModeScreen extends StatelessWidget {
                       ),
                       _buildOptionItem(
                         context,
+                        Icons.phone,
+                        '담당의사 번호 설정',
+                        '현재 설정: ${_userData?['doctorPhone'] ?? '미설정'}',
+                        () => _showDoctorPhoneDialog(context),
+                      ),
+                      _buildOptionItem(
+                        context,
                         Icons.quiz,
                         '퀴즈 설정',
                         '환자가 풀 퀴즈 선택',
@@ -161,8 +456,8 @@ class CaregiverModeScreen extends StatelessWidget {
                         context,
                         Icons.emergency,
                         '긴급 연락처',
-                        '응급 상황 연락처 관리',
-                        () {},
+                        '응급 상황 연락처 관리 (${_emergencyContacts.length}개)',
+                        () => _showEmergencyContactsDialog(context),
                       ),
                       _buildOptionItem(
                         context,

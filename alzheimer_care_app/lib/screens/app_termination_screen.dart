@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:io';
+import '../services/api_service.dart';
 
 class AppTerminationScreen extends StatefulWidget {
   const AppTerminationScreen({super.key});
@@ -34,10 +36,24 @@ class _AppTerminationScreenState extends State<AppTerminationScreen> {
 
       if (_countdown <= 0) {
         timer.cancel();
-        // 앱 종료 로직 (실제로는 SystemNavigator.pop() 등을 사용)
-        Navigator.of(context).pushReplacementNamed('/login');
+        // 앱 종료 로직
+        _terminateApp();
       }
     });
+  }
+
+  void _terminateApp() async {
+    // 로그아웃 처리
+    await ApiService.logout();
+    
+    // 플랫폼별 앱 종료 처리
+    if (Platform.isAndroid || Platform.isIOS) {
+      // 모바일에서는 로그인 화면으로 이동
+      Navigator.of(context).pushReplacementNamed('/login');
+    } else {
+      // 웹에서는 로그인 화면으로 이동
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
   }
 
   @override
@@ -148,6 +164,35 @@ class _AppTerminationScreenState extends State<AppTerminationScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFB74D),
                       borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              // 취소 버튼
+              SizedBox(
+                width: 200,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    _timer?.cancel();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFE65100),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: Color(0xFFE65100)),
+                    ),
+                  ),
+                  child: const Text(
+                    '취소',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),

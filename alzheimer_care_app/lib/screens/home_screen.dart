@@ -4,6 +4,7 @@ import 'emergency_call_screen.dart';
 import 'quiz_screen.dart';
 import 'medication_screen.dart';
 import 'settings_screen.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   final String? userName; // 사용자 이름을 받을 수 있도록 추가
