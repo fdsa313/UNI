@@ -8,3 +8,4 @@ const id2 = nextULID();
 console.log('vid_' + id1);
 // console.log('qz_' + id2);
 console.log('vid_' + id1);
+console.log(typeof('vid_' + id1));

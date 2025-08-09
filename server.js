@@ -174,6 +174,11 @@ app.post('/videos', verifyToken, (req, res) => {
     title: req.body.title,
     url: req.body.url,
   }
+  // DB: db.addVideo(video);
+});
+app.delete('/videos/:videoId', (req, res) => {
+  // DB: db.deleteVideo(req.params.videoId);
+  res.status(200).json({ success: true, message: '영상이 삭제되었습니다.' });
 });
 
 // 로그인
@@ -250,5 +255,3 @@ function getQuizId() {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
