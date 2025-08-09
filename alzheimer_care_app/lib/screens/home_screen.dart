@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'caregiver_mode_screen.dart';
 import 'emergency_call_screen.dart';
+import 'quiz_screen.dart';
+import 'medication_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String? userName; // 사용자 이름을 받을 수 있도록 추가
@@ -75,6 +78,29 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  // 하단 네비게이션 탭 변경 처리
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // 각 탭에 따라 다른 화면으로 이동
+    switch (index) {
+      case 0: // 홈 (현재 화면)
+        // 이미 홈 화면이므로 아무것도 하지 않음
+        break;
+      case 1: // 퀴즈
+        Navigator.of(context).pushNamed('/quiz', arguments: _userName);
+        break;
+      case 2: // 약 복용
+        Navigator.of(context).pushNamed('/medication', arguments: _userName);
+        break;
+      case 3: // 설정
+        Navigator.of(context).pushNamed('/settings', arguments: _userName);
+        break;
+    }
   }
 
   @override
@@ -318,11 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _selectedIndex,
         selectedItemColor: const Color(0xFFFFB74D),
         unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: _onTabTapped,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),

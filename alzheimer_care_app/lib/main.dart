@@ -8,6 +8,8 @@ import 'screens/medication_settings_screen.dart';
 import 'screens/emergency_call_screen.dart';
 import 'screens/app_termination_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/quiz_screen.dart';
+import 'screens/medication_screen.dart';
 
 void main() {
   runApp(const AlzheimerCareApp());
@@ -49,7 +51,21 @@ class AlzheimerCareApp extends StatelessWidget {
         '/medication-settings': (context) => const MedicationSettingsScreen(),
         '/emergency-call': (context) => const EmergencyCallScreen(),
         '/app-termination': (context) => const AppTerminationScreen(),
-        '/settings': (context) => const SettingsScreen(),
+        '/settings': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final userName = args is String ? args : null;
+          return SettingsScreen(userName: userName);
+        },
+        '/quiz': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final userName = args is String ? args : null;
+          return QuizScreen(userName: userName);
+        },
+        '/medication': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final userName = args is String ? args : null;
+          return MedicationScreen(userName: userName);
+        },
       },
     );
   }

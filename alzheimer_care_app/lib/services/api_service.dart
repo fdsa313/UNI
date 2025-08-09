@@ -4,21 +4,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // 실제 서버 URL (MCP 설정에서 연결한 서버)
-  static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'http://127.0.0.1:3000/api';
   
   // 로그인 API
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      print('로그인 시도: $email'); // 디버그 로그
+      print('API URL: $baseUrl/auth/login'); // 디버그 로그
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: jsonEncode({
           'email': email,
           'password': password,
         }),
       );
+
+      print('응답 상태 코드: ${response.statusCode}'); // 디버그 로그
+      print('응답 본문: ${response.body}'); // 디버그 로그
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -32,13 +40,14 @@ class ApiService {
       } else {
         return {
           'success': false,
-          'message': '로그인에 실패했습니다.',
+          'message': '로그인에 실패했습니다. (상태 코드: ${response.statusCode})',
         };
       }
     } catch (e) {
+      print('로그인 오류: $e'); // 디버그 로그
       return {
         'success': false,
-        'message': '네트워크 오류가 발생했습니다.',
+        'message': '네트워크 오류가 발생했습니다: $e',
       };
     }
   }
