@@ -1,0 +1,26 @@
+{
+  "name": "unithon",
+  "version": "1.0.0",
+  "main": "queue.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fdsa313/AlzheimerUnithon.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fdsa313/AlzheimerUnithon/issues"
+  },
+  "homepage": "https://github.com/fdsa313/AlzheimerUnithon#readme",
+  "description": "",
+  "dependencies": {
+    "bullmq": "^5.56.9",
+    "firebase-admin": "^13.4.0",
+    "ioredis": "^5.7.0"
+  }
+}

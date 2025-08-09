@@ -1,9 +1,11 @@
-// index.js
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const path = require('path');
+const  { notifyQueue } = require('./queue.js');
+const SECRET_KEY = 'secret_key';
 
+app.use(express.json());
 
 // 퀴즈
 // 퀴즈 문제, 정답 주기
@@ -29,7 +31,95 @@ app.delete('/quizzes/answers/:quizId', (req, res) => {
   // DB: db.deletequiz(req.params.quizId);
   res.status(200).json({message: "잘 삭제됨"})
 });
-// 
+
+
+// 푸쉬토큰 등록
+app.post('/register-token', async (req, res) => {
+  const { userId, token, platform, timezone } = req.body;
+//   DB: await db.upsertDeviceToken({ userId, token, platform, timezone });
+  res.sendStatus(200);
+});
+
+// 알림 DB에 저장하는 코드
+app.post('/reminders', async (req, res) => {
+  const { userId, title, body, sendAt /* ISO(UTC) */ } = req.body;
+  // DB: const notif = await db.createNotification({ userId, title, body, sendAt });
+
+  const jobId = `notif:${notif.id}`;                     // 멱등 키
+  const delay = Math.max(0, new Date(sendAt).getTime() - Date.now());
+
+  await notifyQueue.add(
+    'sendNotification',
+    { notificationId: notif.id },
+    {
+      jobId,
+      delay,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 30000 },
+      removeOnComplete: true,
+      removeOnFail: false
+    }
+  );
+
+  res.json({ id: notif.id });
+});
+// 알림 수정하는 코드
+app.patch('/reminders/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, body, sendAt } = req.body;
+
+    // DB:  const old = await db.getNotification(id);
+    if (!old) return res.status(404).json({ error: 'not found' });
+    if (old.sent) return res.status(409).json({ error: 'already sent' });
+
+    const update = {};
+    if (typeof title === 'string') update.title = title;
+    if (typeof body === 'string') update.body = body;
+
+    let newSendAt = old.sendAt;
+    if (typeof sendAt === 'string') {
+      const t = new Date(sendAt);
+      if (isNaN(t.getTime())) return res.status(400).json({ error: 'invalid sendAt' });
+      if (t.getTime() <= Date.now()) return res.status(400).json({ error: 'sendAt must be future' });
+      update.sendAt = t.toISOString();
+      newSendAt = update.sendAt;
+    }
+
+    // DB: const notif = await db.updateNotification(id, update);
+
+    // 큐에서 기존 예약 잡 제거
+    const jobId = `notif:${id}`;
+    const oldJob = await notifyQueue.getJob(jobId);
+    if (oldJob) await oldJob.remove();                   // ← 올바른 제거 방식
+
+    // 새 예약 잡 추가
+    const delay = Math.max(0, new Date(newSendAt).getTime() - Date.now());
+    await notifyQueue.add(
+      'sendNotification',
+      { notificationId: id },
+      {
+        jobId,
+        delay,
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 30000 },
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
+
+    res.json({
+      id: notif.id,
+      title: notif.title,
+      body: notif.body,
+      sendAt: notif.sendAt
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
 
 // 로그인
 app.post('/login', (req, res) => {
@@ -75,7 +165,7 @@ app.get('/me',verifyToken, (req, res) => {
 });
 
 // VERIFY
-const SECRET_KEY = 'secret_key';
+
 function verifyToken(req, res, next) {
   // 알아서 라우터 쪽의 req에 user정보 넣어줌
   const authHeader = req.headers.authorization;
@@ -94,10 +184,3 @@ function verifyToken(req, res, next) {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
-
-
-
-
-
