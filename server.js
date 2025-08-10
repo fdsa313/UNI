@@ -12,12 +12,6 @@ const { ulid, monotonicFactory } = require('ulid');
 app.use(express.json());
 
 // 퀴즈
-// 퀴즈 문제, 정답 주기
-app.get('/quizzes/:quizId', (req, res) => { // TODO: 이쪽은 고민 중
-  const quizId = req.params.quizId;
-  // DB: const quiz = db.getQuiz(quizId); 
-  res.status(200).json({quiz: quiz});
-});
 // 퀴즈 객체 배열 주기
 app.get('/quizzes', verifyToken, (req, res) => {
   // DB: const quizzes = db.getAllQuizzes(req.user.userId);
@@ -34,7 +28,7 @@ app.post('/quizzes', verifyToken, (req, res) => {
     imgFile,
     answer
   };
-  // DB: db.saveQuiz(quiz);
+  // DB: db.addQuiz(quiz);
   res.status(201).json({message: "잘 추가됨", quiz});
 });
 // 퀴즈 DELETE
@@ -47,8 +41,8 @@ app.delete('/quizzes/:quizId', (req, res) => {
 // 푸쉬토큰 등록
 app.post('/register-token', verifyToken, async (req, res) => {
   const userId = req.user.userId; // 인증된 사용자 ID
-  const { token, platform, timezone } = req.body;
-//   DB: await db.upsertDeviceToken({ userId, token, platform, timezone });
+  const { token, platform } = req.body;
+//   DB: await db.upsertDeviceToken({ userId, token, platform });
   res.status(200).json({ success: true, message: '토큰이 등록되었습니다.' });
 });
 
@@ -118,18 +112,18 @@ app.get('/reminders', verifyToken, async (req, res) => {
   res.status(200).json({ notifications });
 });
 // 알림 수정하는 코드
-app.patch('/reminders/:id', async (req, res) => {
+app.patch('/reminders/:notificationId', async (req, res) => {
   try {
     const { notificationId } = req.params;
-    const { title, body, sendAt } = req.body;
+    const { title, content, sendAt } = req.body;
 
-    // DB:  const old = await db.getNotification(id);
+    // DB:  const old = await db.getNotification(notificationId);
     if (!old) return res.status(404).json({ error: 'not found' });
     if (old.sent) return res.status(409).json({ error: 'already sent' });
 
     const update = {};
     if (typeof title === 'string') update.title = title;
-    if (typeof body === 'string') update.body = body;
+    if (typeof content === 'string') update.content = content;
 
     let newSendAt = old.sendAt;
     
@@ -146,11 +140,15 @@ app.patch('/reminders/:id', async (req, res) => {
       update.sendAt = sendAt; // KST 문자열 그대로 저장
       newSendAt = sendAt;
     }
+    update.notificationId = notificationId;
+    update.userID = old.userId;
+    update.sent = old.sent;
+    update.createdAt = old.createdAt;
 
-    // DB: const notif = await db.updateNotification(id, update);
+    // DB: const notif = await db.updateNotification(notificationId, update);
 
     // 큐에서 기존 예약 잡 제거
-    const jobId = `notif:${id}`;
+    const jobId = `notif:${notificationId}`;
     const oldJob = await notifyQueue.getJob(jobId);
     if (oldJob) await oldJob.remove();                   // ← 올바른 제거 방식
 
@@ -170,21 +168,21 @@ app.patch('/reminders/:id', async (req, res) => {
     );
 
     res.json({
-      id: notif.id,
+      notificationId: notif.notificationId,
       title: notif.title,
       body: notif.body,
       sendAt: notif.sendAt
     });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: 'internal' });
+    res.status(500).json({ error: 'internal' }); 
   }
 });
 // 알림 삭제하는 코드
-app.delete('/reminders/:id', async (req, res) => {
-  const { id } = req.params;
-  // DB: db.deleteNotification(id);
-  const jobId = `notif:${id}`;
+app.delete('/reminders/:notificationId', async (req, res) => {
+  const { notificationId } = req.params;
+  // DB: db.deleteNotification(notificationId);
+  const jobId = `notif:${notificationId}`;
   const job = await notifyQueue.getJob(jobId);
   if (job) await job.remove();
 
@@ -193,14 +191,14 @@ app.delete('/reminders/:id', async (req, res) => {
 
 
 // QUIZ
-app.get('/quizzes', (req, res) => {
-  const quizzes = []; // DB: db.getAllQuizzes();
+app.get('/quizzes', verifyToken, (req, res) => {
+  const quizzes = []; // DB: db.getAllQuizzes(req.user.userId);
   res.status(200).json({ quizzes });
 });
 app.post('/quizzes', (req, res) => {
   const { imgFile, answer } = req.body;
-  const quizID = getQuizId;
-  const quiz = { quizID, imgFile, answer };
+  const quizId = getQuizId();
+  const quiz = { userId: req.user.userId, quizId, imgFile, answer };
   // DB: db.addQuiz(quiz);
   res.status(201).json({ success: true, message: '퀴즈가 추가되었습니다.', quiz });
 });
@@ -234,7 +232,7 @@ app.delete('/videos/:videoId', (req, res) => {
 app.post('/login', (req, res) => {
   const id = req.body.id;
   const pw = req.body.pw;
-  // DB: const user = db.getUsersById(id);
+  // DB: const user = db.getUserById(id); // 회원가입 시의 id로 회원 조회
   // id에 해당하는 user가 없거나, 비번이 틀리거나
   if(!user || pw != user.userPw) {
     return res.status(401).json({sucess: false, message: "아이디 또는 비밀번호가 잘못 되었습니다.\n아이디와 비밀번호를 정확히 입력해 주세요."});
@@ -242,7 +240,7 @@ app.post('/login', (req, res) => {
   // 성공 시, jwt줌
   // 자동으로 헤더 넣어주고, userId로 페이로드 만들어주고, 서명까지 써줌
   const token = jwt.sign(
-    { userId: user.userId },
+    { userId: user.userId }, // 페이로드에 userId 넣기
       SECRET_KEY,
     { expiresIn: '1h' } // 1시간 유효
   );
@@ -256,8 +254,9 @@ app.post('/signup', (req, res) => {
   const {signupId, signupPw} = req.body;
 
   // 신규 등록자
-  if(!storage.getUsersById(signupId)) { // DB: db.getUserById(userId)
+  if(!storage.getUsersById(signupId)) { // DB: db.getUserById(id)
       const user = {
+        userId: getUserId(),
         userId: signupId,
         userPw: signupPw
       };
@@ -300,6 +299,9 @@ function getQuizId() {
 }
 function getNotificationId() {
   return 'ntf_' + ulid();
+}
+function getUserId() {
+  return 'user_' + ulid();
 }
 // delay를 위한 KST 문자열 파싱 함수
 function parseKstToUtcMs(kstString) {
