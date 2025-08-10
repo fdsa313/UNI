@@ -31,6 +31,18 @@ app.post('/quizzes', verifyToken, (req, res) => {
   // DB: db.addQuiz(quiz);
   res.status(201).json({message: "잘 추가됨", quiz});
 });
+app.put('/quizzes/:quizId', verifyToken, (req, res) => {
+  // DB: const oldQuiz = db.getQuizById(req.params.quizId);
+  const { imgFile, answer } = req.body;
+  const quizId = req.params.quizId;
+  const newQuiz = {
+    userId: req.user.userId,
+    quizId,
+    imgFile,
+    answer
+  };
+  // DB: db.editQuiz(newQuiz);
+});
 // 퀴즈 DELETE
 app.delete('/quizzes/:quizId', (req, res) => {
   // DB: db.deletequiz(req.params.quizId);
