@@ -53,16 +53,53 @@ app.post('/register-token', verifyToken, async (req, res) => {
 });
 
 // 알림 DB에 저장하는 코드
-app.post('/reminders', async (req, res) => {
-  const { userId, title, body, sendAt /* ISO(UTC) */ } = req.body;
-  // DB: const notif = await db.createNotification({ userId, title, body, sendAt });
+app.post('/reminders', verifyToken, async (req, res) => {
+  const userId = req.user.userId; // 인증된 사용자 ID
+  const { title, content, sendAt /* ISO(UTC) */ } = req.body;
+  const notificationId = getNotificationId();
+  
+  // 기본 검증
+  if (typeof title !== 'string' || !title.trim()) {
+    return res.status(400).json({ error: 'title required' });
+    }
+    if (typeof content !== 'string') {
+      return res.status(400).json({ error: 'content required' });
+    }
+    if (typeof sendAt !== 'string') {
+      return res.status(400).json({ error: 'sendAt must be KST string "YYYY-MM-DD HH:mm:ss"' });
+    }
 
-  const jobId = `notif:${notif.id}`;                     // 멱등 키
-  const delay = Math.max(0, new Date(sendAt).getTime() - Date.now());
+    const targetUtcMs = parseKstToUtcMs(sendAt);
+    if (!Number.isFinite(targetUtcMs)) {
+      return res.status(400).json({ error: 'invalid sendAt format (expect "YYYY-MM-DD HH:mm:ss" in KST)' });
+    }
+
+    // 최소 리드타임(예: 30초)
+    const minLead = 30_000;
+    if (targetUtcMs <= Date.now() + minLead) {
+      return res.status(400).json({ error: 'sendAt must be at least 30s in the future' });
+    }
+    // DB: const notif = await db.createNotification({ 
+    // notificationId, userId, title, content, sendAt, sent: false, createdAt: nowKstString()});
+
+    // DB 저장: sendAt/createdAt은 KST 문자열 그대로
+    // const notif = await db.createNotification({
+    //   notificationId,
+    //   userId,
+    //   title,
+    //   content,
+    //   sendAt,                   // KST 문자열 원본 보관
+    //   sent: false,
+    //   createdAt: nowKstString() // KST 문자열
+    // });
+
+
+  const jobId = `notif:${notif.notificationId}`;                     // 멱등 키
+  const delay = Math.max(0, targetUtcMs - Date.now());
 
   await notifyQueue.add(
     'sendNotification',
-    { notificationId: notif.id },
+    { notificationId: notif.notificationId },
     {
       jobId,
       delay,
@@ -73,12 +110,17 @@ app.post('/reminders', async (req, res) => {
     }
   );
 
-  res.json({ id: notif.id });
+  res.json({ id: notif.notificationId });
+});
+// 알림 목록 가져오는 코드
+app.get('/reminders', verifyToken, async (req, res) => {
+  // DB: const notifications = await db.getNotifications(req.user.userId);
+  res.status(200).json({ notifications });
 });
 // 알림 수정하는 코드
 app.patch('/reminders/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { notificationId } = req.params;
     const { title, body, sendAt } = req.body;
 
     // DB:  const old = await db.getNotification(id);
@@ -90,12 +132,19 @@ app.patch('/reminders/:id', async (req, res) => {
     if (typeof body === 'string') update.body = body;
 
     let newSendAt = old.sendAt;
+    
     if (typeof sendAt === 'string') {
-      const t = new Date(sendAt);
-      if (isNaN(t.getTime())) return res.status(400).json({ error: 'invalid sendAt' });
-      if (t.getTime() <= Date.now()) return res.status(400).json({ error: 'sendAt must be future' });
-      update.sendAt = t.toISOString();
-      newSendAt = update.sendAt;
+      const targetUtcMs = parseKstToUtcMs(sendAt);
+      if (!Number.isFinite(targetUtcMs)) {
+        return res.status(400).json({
+          error: 'invalid sendAt (expect "YYYY-MM-DD HH:mm:ss" in KST)',
+        });
+      }
+      if (targetUtcMs <= Date.now()) {
+        return res.status(400).json({ error: 'sendAt must be future' });
+      }
+      update.sendAt = sendAt; // KST 문자열 그대로 저장
+      newSendAt = sendAt;
     }
 
     // DB: const notif = await db.updateNotification(id, update);
@@ -105,18 +154,18 @@ app.patch('/reminders/:id', async (req, res) => {
     const oldJob = await notifyQueue.getJob(jobId);
     if (oldJob) await oldJob.remove();                   // ← 올바른 제거 방식
 
-    // 새 예약 잡 추가
-    const delay = Math.max(0, new Date(newSendAt).getTime() - Date.now());
+      // 새 예약 잡 추가
+    const delay = Math.max(0, parseKstToUtcMs(newSendAt) - Date.now());
     await notifyQueue.add(
       'sendNotification',
-      { notificationId: id },
+      { notificationId: notificationId },
       {
         jobId,
         delay,
         attempts: 5,
         backoff: { type: 'exponential', delay: 30000 },
         removeOnComplete: true,
-        removeOnFail: false
+        removeOnFail: false,
       }
     );
 
@@ -248,6 +297,28 @@ function getVideoId() {
 }
 function getQuizId() {
   return 'qz_' + ulid();
+}
+function getNotificationId() {
+  return 'ntf_' + ulid();
+}
+// delay를 위한 KST 문자열 파싱 함수
+function parseKstToUtcMs(kstString) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(kstString);
+  if (!m) return NaN;
+  const [_, yy, MM, dd, hh, mm, ss] = m.map(Number);
+  return Date.UTC(yy, MM - 1, dd, hh - 9, mm, ss);
+}
+// "2025-08-10 15:40:58" 이런 거 주는 애
+function nowKstString() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const two = (n) => String(n).padStart(2, '0');
+  const y = kst.getUTCFullYear();
+  const m = two(kst.getUTCMonth() + 1);
+  const d = two(kst.getUTCDate());
+  const h = two(kst.getUTCHours());
+  const mi = two(kst.getUTCMinutes());
+  const s = two(kst.getUTCSeconds());
+  return `${y}-${m}-${d} ${h}:${mi}:${s}`;
 }
 
 

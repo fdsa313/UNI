@@ -1,11 +1,19 @@
-// CJS
-const { ulid, monotonicFactory } = require('ulid');
+// 
+function nowKstString() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const two = (n) => String(n).padStart(2, '0');
+  const y = kst.getUTCFullYear();
+  const m = two(kst.getUTCMonth() + 1);
+  const d = two(kst.getUTCDate());
+  const h = two(kst.getUTCHours());
+  const mi = two(kst.getUTCMinutes());
+  const s = two(kst.getUTCSeconds());
+  return `${y}-${m}-${d} ${h}:${mi}:${s}`;
+}
+// console.log(`Current KST time: ${nowKstString()}`);
 
-const id1 = ulid();                 // 일반 ULID
-const nextULID = monotonicFactory(); // 같은 ms 내에서도 정렬 보장
-const id2 = nextULID();
+// console.log(Date().toISOString());
 
-console.log('vid_' + id1);
-// console.log('qz_' + id2);
-console.log('vid_' + id1);
-console.log(typeof('vid_' + id1));
+const now = new Date();
+console.log(now.toISOString());
+// 예: "2025-08-10T06:20:54.123Z"

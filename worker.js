@@ -4,57 +4,68 @@ const IORedis = require('ioredis');
 const admin = require('firebase-admin');
 
 admin.initializeApp({ /* serviceAccount */ });
-// const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+
 const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
-  maxRetriesPerRequest: null
+  maxRetriesPerRequest: null,
 });
+
+// (선택) KST <-> UTC 포맷 유틸 (워커에선 딱히 필요는 없지만 디버깅용)
+function formatUtcAsKst(isoOrDate) {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate; // UTC
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const two = (n) => String(n).padStart(2, '0');
+  const y = kst.getUTCFullYear();
+  const m = two(kst.getUTCMonth() + 1);
+  const day = two(kst.getUTCDate());
+  const h = two(kst.getUTCHours());
+  const min = two(kst.getUTCMinutes());
+  const s = two(kst.getUTCSeconds());
+  return `${y}-${m}-${day} ${h}:${min}:${s}`;
+}
 
 new Worker(
   'notify',
-  async job => {
+  async (job) => {
     if (job.name !== 'sendNotification') return;
 
+    const { notificationId } = job.data;
+    if (!notificationId) return;
 
+    // --- DB에서 알림/토큰 조회 (의사코드) ---
+    // const notif = await db.getNotification(notificationId);
+    // const tokens = await db.getActiveTokensByUserId(notif.userId);
 
-    // --- MOCK: DB에서 가져온 것처럼 직접 값 할당 ---
-    // const notif = {
-    //   id: job.data.notificationId,
-    //   sent: false,
-    //   userId: 'test-user',
-    //   title: '테스트 알림',
-    //   body: '이것은 테스트 메시지입니다.',
-    //   deepLink: 'app://test'
-    // };
-    
-    // --- MOCK: 토큰도 직접 할당 ---
-    // const tokens = ['test-token-1', 'test-token-2'];
+    // 데모 목업 (실서비스에선 위 DB 코드로 교체)
+    const notif = {
+      notificationId: notificationId,
+      sent: false,
+      userId: 'test-user',
+      title: '테스트 알림',
+      body: '이것은 테스트 메시지입니다.',
+      deepLink: 'app://test',
+      sendAtUtc: new Date().toISOString(),
+    };
+    const tokens = ['test-token-1', 'test-token-2'];
 
-    // DB: const notif = await db.getNotification(job.data.notificationId);
     if (!notif || notif.sent) return;
+    if (!Array.isArray(tokens) || tokens.length === 0) return;
 
-    // DB: const tokens = await db.getActiveTokensByUserId(notif.userId);
-    if (!tokens.length) return;
+    const payload = {
+      notification: { title: notif.title, body: notif.body },
+      data: { deepLink: notif.deepLink || '' },
+      tokens,
+    };
 
-    // const payload = {
-    //   notification: { title: notif.title, body: notif.body },
-    //   data: { deepLink: notif.deepLink || '' },
-    //   tokens
-    // };
-
-    
-    // console.log('FCM에 보낼 payload:', payload);
-    
+    // console.log('[Worker] send at (KST):', formatUtcAsKst(notif.sendAtUtc));
     const res = await admin.messaging().sendEachForMulticast(payload);
-    // DB: await db.handleFcmResults(tokens, res);
-    // DB: await db.markNotificationSent(notif.id);
+
+    // --- 전송 결과 처리 & sent 마킹 (의사코드) ---
+    // await db.handleFcmResults(tokens, res);
+    // await db.markNotificationSent(notif.id);
   },
   {
     connection,
     concurrency: 5,
-    // 선택: 아주 긴 작업이 없다면 기본값(30s) 유지
     // lockDuration: 30000
   }
 );
-
-
-
