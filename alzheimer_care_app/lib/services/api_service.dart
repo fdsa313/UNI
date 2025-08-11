@@ -98,28 +98,164 @@ class ApiService {
     }
   }
 
-  // 사용자 정보 가져오기
+  // 사용자 데이터 저장 (로컬)
+  static Future<void> _saveUserData(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userData', jsonEncode(userData));
+  }
+
+  // 사용자 데이터 조회 (로컬)
   static Future<Map<String, dynamic>?> getUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString('userData');
+    if (userDataString != null) {
+      return jsonDecode(userDataString);
+    }
+    return null;
+  }
+
+  // 환자 데이터 저장 API
+  static Future<bool> savePatientData(String patientName, Map<String, dynamic> patientData) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userDataString = prefs.getString('user_data');
+      print('환자 데이터 저장 시도: $patientName');
       
-      if (userDataString != null) {
-        return jsonDecode(userDataString);
+      final response = await http.post(
+        Uri.parse('$baseUrl/patients/$patientName/data'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(patientData),
+      );
+
+      print('환자 데이터 저장 응답: ${response.statusCode}');
+      print('응답 본문: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['success'] ?? false;
+      } else {
+        print('환자 데이터 저장 실패: ${response.statusCode}');
+        return false;
       }
+    } catch (e) {
+      print('환자 데이터 저장 오류: $e');
+      return false;
+    }
+  }
+
+  // 환자 데이터 조회 API
+  static Future<Map<String, dynamic>?> getPatientData(String patientName) async {
+    try {
+      print('환자 데이터 조회 시도: $patientName');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/patients/$patientName/data'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('환자 데이터 조회 응답: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          return data['data'];
+        }
+      } else if (response.statusCode == 404) {
+        print('환자 데이터를 찾을 수 없음: $patientName');
+        return null;
+      } else {
+        print('환자 데이터 조회 실패: ${response.statusCode}');
+      }
+      
       return null;
     } catch (e) {
+      print('환자 데이터 조회 오류: $e');
       return null;
     }
   }
 
-  // 사용자 정보 저장
-  static Future<void> _saveUserData(Map<String, dynamic> userData) async {
+  // 퀴즈 결과 저장 API
+  static Future<bool> saveQuizResult(String patientName, Map<String, dynamic> quizData) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_data', jsonEncode(userData));
+      print('퀴즈 결과 저장 시도: $patientName');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/patients/$patientName/quiz'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(quizData),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['success'] ?? false;
+      } else {
+        print('퀴즈 결과 저장 실패: ${response.statusCode}');
+        return false;
+      }
     } catch (e) {
-      print('사용자 데이터 저장 실패: $e');
+      print('퀴즈 결과 저장 오류: $e');
+      return false;
+    }
+  }
+
+  // 약물 복용 기록 저장 API
+  static Future<bool> saveMedicationLog(String patientName, Map<String, dynamic> medicationData) async {
+    try {
+      print('약물 복용 기록 저장 시도: $patientName');
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/patients/$patientName/medication'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(medicationData),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['success'] ?? false;
+      } else {
+        print('약물 복용 기록 저장 실패: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('약물 복용 기록 저장 오류: $e');
+      return false;
+    }
+  }
+
+  // 약물 복용 기록 조회 API
+  static Future<Map<String, dynamic>?> getMedicationLog(String patientName, String date) async {
+    try {
+      print('약물 복용 기록 조회 시도: $patientName, $date');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/patients/$patientName/medication/$date'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success']) {
+          return data['data'];
+        }
+      } else if (response.statusCode == 404) {
+        print('약물 복용 기록을 찾을 수 없음: $patientName, $date');
+        return null;
+      } else {
+        print('약물 복용 기록 조회 실패: ${response.statusCode}');
+      }
+      
+      return null;
+    } catch (e) {
+      print('약물 복용 기록 조회 오류: $e');
+      return null;
     }
   }
 
@@ -195,27 +331,6 @@ class ApiService {
           'Content-Type': 'application/json',
         },
         body: jsonEncode(medication),
-      );
-
-      return response.statusCode == 201;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // 복용 기록 저장
-  static Future<bool> saveMedicationLog(String medicationId, String time) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/medication-logs'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'medicationId': medicationId,
-          'time': time,
-          'takenAt': DateTime.now().toIso8601String(),
-        }),
       );
 
       return response.statusCode == 201;

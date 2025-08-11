@@ -237,6 +237,232 @@ app.post('/api/moods', (req, res) => {
   });
 });
 
+// 환자 데이터 저장 API
+app.post('/api/patients/:patientName/data', async (req, res) => {
+  try {
+    const { patientName } = req.params;
+    const { quizResults, medicationHistory, moodTrend, cognitiveScore, recommendations } = req.body;
+    
+    console.log('환자 데이터 저장 시도:', { patientName, quizResults, medicationHistory, moodTrend, cognitiveScore });
+    
+    // Supabase에 환자 데이터 저장/업데이트
+    const { data, error } = await supabase
+      .from('patient_records')
+      .upsert({
+        patient_name: patientName,
+        quiz_results: quizResults,
+        medication_history: medicationHistory,
+        mood_trend: moodTrend,
+        cognitive_score: cognitiveScore,
+        recommendations: recommendations,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'patient_name'
+      });
+    
+    if (error) {
+      console.error('Supabase 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '데이터 저장 중 오류가 발생했습니다.'
+      });
+    }
+    
+    console.log('환자 데이터 저장 성공:', data);
+    
+    res.status(201).json({
+      success: true,
+      message: '환자 데이터가 저장되었습니다.',
+      data: data
+    });
+  } catch (error) {
+    console.error('환자 데이터 저장 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '서버 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 환자 데이터 조회 API
+app.get('/api/patients/:patientName/data', async (req, res) => {
+  try {
+    const { patientName } = req.params;
+    
+    console.log('환자 데이터 조회 시도:', patientName);
+    
+    // Supabase에서 환자 데이터 조회
+    const { data, error } = await supabase
+      .from('patient_records')
+      .select('*')
+      .eq('patient_name', patientName)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // 데이터가 없는 경우
+        return res.status(404).json({
+          success: false,
+          message: '환자 데이터를 찾을 수 없습니다.'
+        });
+      }
+      console.error('Supabase 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '데이터 조회 중 오류가 발생했습니다.'
+      });
+    }
+    
+    console.log('환자 데이터 조회 성공:', data);
+    
+    res.json({
+      success: true,
+      data: data
+    });
+  } catch (error) {
+    console.error('환자 데이터 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '서버 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 퀴즈 결과 저장 API
+app.post('/api/patients/:patientName/quiz', async (req, res) => {
+  try {
+    const { patientName } = req.params;
+    const { score, total, time, date } = req.body;
+    
+    console.log('퀴즈 결과 저장 시도:', { patientName, score, total, time, date });
+    
+    // Supabase에 퀴즈 결과 저장
+    const { data, error } = await supabase
+      .from('quiz_results')
+      .insert({
+        patient_name: patientName,
+        score: score,
+        total: total,
+        time: time,
+        date: date,
+        created_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Supabase 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '퀴즈 결과 저장 중 오류가 발생했습니다.'
+      });
+    }
+    
+    console.log('퀴즈 결과 저장 성공:', data);
+    
+    res.status(201).json({
+      success: true,
+      message: '퀴즈 결과가 저장되었습니다.',
+      data: data
+    });
+  } catch (error) {
+    console.error('퀴즈 결과 저장 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '서버 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 약물 복용 기록 저장 API
+app.post('/api/patients/:patientName/medication', async (req, res) => {
+  try {
+    const { patientName } = req.params;
+    const { date, morning, lunch, evening } = req.body;
+    
+    console.log('약물 복용 기록 저장 시도:', { patientName, date, morning, lunch, evening });
+    
+    // Supabase에 약물 복용 기록 저장
+    const { data, error } = await supabase
+      .from('medication_logs')
+      .upsert({
+        patient_name: patientName,
+        date: date,
+        morning: morning,
+        lunch: lunch,
+        evening: evening,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'patient_name,date'
+      });
+    
+    if (error) {
+      console.error('Supabase 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '약물 복용 기록 저장 중 오류가 발생했습니다.'
+      });
+    }
+    
+    console.log('약물 복용 기록 저장 성공:', data);
+    
+    res.status(201).json({
+      success: true,
+      message: '약물 복용 기록이 저장되었습니다.',
+      data: data
+    });
+  } catch (error) {
+    console.error('약물 복용 기록 저장 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '서버 오류가 발생했습니다.'
+    });
+  }
+});
+
+// 약물 복용 기록 조회 API
+app.get('/api/patients/:patientName/medication/:date', async (req, res) => {
+  try {
+    const { patientName, date } = req.params;
+    
+    console.log('약물 복용 기록 조회 시도:', { patientName, date });
+    
+    // Supabase에서 약물 복용 기록 조회
+    const { data, error } = await supabase
+      .from('medication_logs')
+      .select('*')
+      .eq('patient_name', patientName)
+      .eq('date', date)
+      .single();
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // 데이터가 없는 경우
+        return res.status(404).json({
+          success: false,
+          message: '약물 복용 기록을 찾을 수 없습니다.'
+        });
+      }
+      console.error('Supabase 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '데이터 조회 중 오류가 발생했습니다.'
+      });
+    }
+    
+    console.log('약물 복용 기록 조회 성공:', data);
+    
+    res.json({
+      success: true,
+      data: data
+    });
+  } catch (error) {
+    console.error('약물 복용 기록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '서버 오류가 발생했습니다.'
+    });
+  }
+});
+
 // 서버 시작
 app.listen(PORT, () => {
   console.log(`🚀 서버가 포트 ${PORT}에서 실행 중입니다.`);

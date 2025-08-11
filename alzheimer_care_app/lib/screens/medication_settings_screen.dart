@@ -132,32 +132,35 @@ class _MedicationSettingsScreenState extends State<MedicationSettingsScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // 제목
-                const Text(
-                  '약물 설정',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFE65100),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // 제목
+                  const Text(
+                    '약물 설정',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFE65100),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  '복용 시간, 약물 정보 관리',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF8D6E63),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '복용 시간, 약물 정보 관리',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF8D6E63),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // 약물 목록
-                Expanded(
-                  child: Container(
+                  // 약물 목록
+                  Container(
+                    constraints: BoxConstraints(
+                      minHeight: MediaQuery.of(context).size.height * 0.4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -171,16 +174,21 @@ class _MedicationSettingsScreenState extends State<MedicationSettingsScreen> {
                     ),
                     child: _medications.isEmpty
                         ? const Center(
-                            child: Text(
-                              '등록된 약물이 없습니다.\n새 약물을 추가해주세요.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF8D6E63),
+                            child: Padding(
+                              padding: EdgeInsets.all(40.0),
+                              child: Text(
+                                '등록된 약물이 없습니다.\n새 약물을 추가해주세요.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF8D6E63),
+                                ),
                               ),
                             ),
                           )
                         : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             padding: const EdgeInsets.all(16),
                             itemCount: _medications.length,
                             itemBuilder: (context, index) {
@@ -260,28 +268,28 @@ class _MedicationSettingsScreenState extends State<MedicationSettingsScreen> {
                             },
                           ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // 새 약물 추가 버튼
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed: _addMedication,
-                    icon: const Icon(Icons.add),
-                    label: const Text('새 약물 추가'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFB74D),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  // 새 약물 추가 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _addMedication,
+                      icon: const Icon(Icons.add),
+                      label: const Text('새 약물 추가'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

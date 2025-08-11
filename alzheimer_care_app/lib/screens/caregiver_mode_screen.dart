@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_web/webview_flutter_web.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:alzheimer_care_app/screens/patient_management_screen.dart';
 
 class CaregiverModeScreen extends StatefulWidget {
   final String? userName;
@@ -13,23 +17,29 @@ class CaregiverModeScreen extends StatefulWidget {
 class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
-  final _doctorPhoneController = TextEditingController();
   List<Map<String, String>> _emergencyContacts = [];
+  
+  // 웹뷰 컨트롤러
+  WebViewController? _webViewController;
 
   // 사용자 이름을 가져오는 함수
   String get _userName {
-    return widget.userName ?? '돌쇠님';
+    return widget.userName ?? "김철수님";
   }
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    
+    // 웹뷰 초기화
+    if (kIsWeb) {
+      WebViewPlatform.instance = WebWebViewPlatform();
+    }
   }
 
   @override
   void dispose() {
-    _doctorPhoneController.dispose();
     super.dispose();
   }
 
@@ -40,10 +50,7 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
         _userData = userData;
         _isLoading = false;
       });
-      // 담당의사 번호가 있으면 컨트롤러에 설정
-      if (userData != null && userData['doctorPhone'] != null) {
-        _doctorPhoneController.text = userData['doctorPhone'];
-      }
+
       // 긴급 연락처 로드
       _loadEmergencyContacts();
     } catch (e) {
@@ -66,82 +73,31 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
     }
   }
 
-  void _showDoctorPhoneDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('담당의사 번호 설정'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '환자의 담당의사 연락처를 설정해주세요.',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _doctorPhoneController,
-                decoration: const InputDecoration(
-                  labelText: '담당의사 번호',
-                  hintText: '010-0000-0000',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
+  void _showLocationFinder(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('위치 찾기'),
+            backgroundColor: const Color(0xFFFFB74D),
+            foregroundColor: Colors.white,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('취소'),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await _saveDoctorPhone();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFB74D),
-                foregroundColor: Colors.white,
+          ),
+          body: WebViewWidget(
+            controller: WebViewController()
+              ..loadRequest(
+                Uri.parse('https://map.naver.com'),
               ),
-              child: const Text('저장'),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 
-  Future<void> _saveDoctorPhone() async {
-    try {
-      final success = await ApiService.saveDoctorPhone(_doctorPhoneController.text);
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('담당의사 번호가 저장되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // 사용자 데이터 다시 로드
-        await _loadUserData();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('저장에 실패했습니다.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('저장에 실패했습니다.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+
 
   void _showEmergencyContactsDialog(BuildContext context) {
     showDialog(
@@ -419,10 +375,10 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
                       ),
                       _buildOptionItem(
                         context,
-                        Icons.phone,
-                        '담당의사 번호 설정',
-                        '현재 설정: ${_userData?['doctorPhone'] ?? '미설정'}',
-                        () => _showDoctorPhoneDialog(context),
+                        Icons.location_on,
+                        '위치 찾기',
+                        '네이버 지도로 위치 확인',
+                        () => _showLocationFinder(context),
                       ),
                       _buildOptionItem(
                         context,
@@ -436,21 +392,14 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
                         Icons.person_add,
                         '환자 관리',
                         '환자 정보, 상태 관리',
-                        () {},
-                      ),
-                      _buildOptionItem(
-                        context,
-                        Icons.history,
-                        '복용 기록',
-                        '약 복용 이력 확인',
-                        () {},
+                        () => Navigator.of(context).pushNamed('/patient-management', arguments: _userName),
                       ),
                       _buildOptionItem(
                         context,
                         Icons.bar_chart,
                         '진행 상황',
-                        '퀴즈 결과, 활동 분석',
-                        () {},
+                        'AI 보고서, 활동 분석',
+                        () => Navigator.of(context).pushNamed('/progress-report', arguments: _userName),
                       ),
                       _buildOptionItem(
                         context,

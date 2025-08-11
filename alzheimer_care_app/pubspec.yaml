@@ -40,6 +40,30 @@ dependencies:
   
   # 로컬 저장소를 위한 패키지
   shared_preferences: ^2.2.2
+  
+  # 웹뷰를 위한 패키지
+  webview_flutter: ^4.4.2
+  webview_flutter_web: ^0.2.2+4
+  
+  # PDF 생성을 위한 패키지
+  syncfusion_flutter_pdf: ^24.2.9
+  path_provider: ^2.1.2
+  
+  # OpenAI API 연동을 위한 패키지
+  dio: ^5.4.0
+  
+  # URL 실행을 위한 패키지
+  url_launcher: ^6.2.4
+
+# 폰트 설정
+fonts:
+  - family: NotoSansKR
+    fonts:
+      - asset: assets/fonts/NotoSansKR-Regular.ttf
+      - asset: assets/fonts/NotoSansKR-Bold.ttf
+        weight: 700
+  
+
 
 dev_dependencies:
   flutter_test:

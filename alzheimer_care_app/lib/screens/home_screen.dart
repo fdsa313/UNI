@@ -4,6 +4,7 @@ import 'emergency_call_screen.dart';
 import 'quiz_screen.dart';
 import 'medication_screen.dart';
 import 'settings_screen.dart';
+import '../services/api_service.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -37,8 +38,30 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadTodayMedicationStatus();
     _updateNextMedicationTime();
     _startTimer();
+  }
+
+  // 오늘 날짜의 약물 복용 상태 로드
+  Future<void> _loadTodayMedicationStatus() async {
+    try {
+      final today = DateTime.now().toString().substring(0, 10);
+      final medicationData = await ApiService.getMedicationLog(_userName, today);
+      
+      if (medicationData != null) {
+        setState(() {
+          _medicationStatus['morning'] = medicationData['morning'] ?? false;
+          _medicationStatus['lunch'] = medicationData['lunch'] ?? false;
+          _medicationStatus['evening'] = medicationData['evening'] ?? false;
+        });
+        
+        // 다음 복용 시간 업데이트
+        _updateNextMedicationTime();
+      }
+    } catch (e) {
+      print('약물 복용 상태 로드 오류: $e');
+    }
   }
 
   @override
@@ -184,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // 하단 네비게이션 탭 변경 처리
-  void _onTabTapped(int index) {
+  void _onTabTapped(int index) async {
     setState(() {
       _selectedIndex = index;
     });
@@ -198,7 +221,15 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).pushNamed('/quiz', arguments: _userName);
         break;
       case 2: // 약 복용
-        Navigator.of(context).pushNamed('/medication', arguments: _userName);
+        final result = await Navigator.of(context).pushNamed('/medication', arguments: _userName);
+        if (result != null && result is Map<String, dynamic> && result['updated'] == true) {
+          // 약물 복용 상태가 업데이트된 경우
+          setState(() {
+            _medicationStatus = Map<String, bool>.from(result['medicationStatus']);
+          });
+          // 다음 복용 시간 업데이트
+          _updateNextMedicationTime();
+        }
         break;
       case 3: // 설정
         Navigator.of(context).pushNamed('/settings', arguments: _userName);
