@@ -191,14 +191,16 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
 
   // 평균 퀴즈 정답률 계산
   int _calculateAverageQuizScore() {
-    if (_progressData == null || _progressData!['quizResults'].isEmpty) return 0;
+    if (_progressData == null || 
+        _progressData!['quizResults'] == null || 
+        (_progressData!['quizResults'] as List).isEmpty) return 0;
     
     int totalScore = 0;
     int totalQuestions = 0;
     
-    for (var quiz in _progressData!['quizResults']) {
-      totalScore += quiz['score'] as int;
-      totalQuestions += quiz['total'] as int;
+    for (var quiz in _progressData!['quizResults'] as List) {
+      totalScore += (quiz['score'] ?? 0) as int;
+      totalQuestions += (quiz['total'] ?? 0) as int;
     }
     
     if (totalQuestions == 0) return 0;
@@ -209,7 +211,9 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
 
   // 약물 복용 준수율 계산 (최근 7일)
   double _calculateMedicationCompliance() {
-    if (_progressData == null || _progressData!['medicationHistory'].isEmpty) return 0.0;
+    if (_progressData == null || 
+        _progressData!['medicationHistory'] == null || 
+        (_progressData!['medicationHistory'] as List).isEmpty) return 0.0;
     
     final history = _progressData!['medicationHistory'] as List;
     int totalDoses = 0;
@@ -224,6 +228,23 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
     
     if (totalDoses == 0) return 0.0;
     return (takenDoses / totalDoses) * 100;
+  }
+
+  // 평균 기분 점수 계산
+  double _calculateAverageMoodScore() {
+    if (_progressData == null || 
+        _progressData!['moodTrend'] == null || 
+        (_progressData!['moodTrend'] as List).isEmpty) return 0.0;
+    
+    final moodTrend = _progressData!['moodTrend'] as List;
+    int totalScore = 0;
+    
+    for (var mood in moodTrend) {
+      totalScore += (mood['score'] ?? 0) as int;
+    }
+    
+    if (moodTrend.isEmpty) return 0.0;
+    return totalScore / moodTrend.length;
   }
 
   @override
@@ -276,7 +297,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                 radius: 40,
                                 backgroundColor: const Color(0xFFFFB74D),
                                 child: Text(
-                                  _userName.substring(0, 1),
+                                  _userName.isNotEmpty ? _userName.substring(0, 1) : '?',
                                   style: const TextStyle(
                                     fontSize: 32,
                                     fontWeight: FontWeight.bold,
@@ -322,7 +343,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                           _buildProgressCard(
                             '퀴즈 성과',
                             Icons.quiz,
-                            '${_progressData!['quizResults'].length}회 참여',
+                            '${(_progressData!['quizResults'] as List?)?.length ?? 0}회 참여',
                             '평균 정답률: ${_calculateAverageQuizScore()}%',
                             Colors.blue,
                           ),
@@ -339,7 +360,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             '기분 상태',
                             Icons.sentiment_satisfied,
                             '평균 기분 점수',
-                            '${_progressData!['moodTrend'].map((m) => m['score']).reduce((a, b) => a + b) ~/ _progressData!['moodTrend'].length}/5점',
+                            '${_calculateAverageMoodScore().toStringAsFixed(1)}/5점',
                             Colors.orange,
                           ),
                           const SizedBox(height: 16),
@@ -347,7 +368,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                             '인지 능력',
                             Icons.psychology,
                             '종합 인지 점수',
-                            '${_progressData!['cognitiveScore'].round()}/100점',
+                            '${(_progressData!['cognitiveScore'] ?? 0.0).round()}/100점',
                             Colors.purple,
                           ),
                         ],
@@ -403,7 +424,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                               const SizedBox(height: 16),
                               
                               // 복용 기록 테이블
-                              if (_progressData != null) ...[
+                              if (_progressData != null && _progressData!['medicationHistory'] != null) ...[
                                 _buildMedicationHistoryTable(),
                               ],
                             ],
@@ -413,7 +434,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                         const SizedBox(height: 24),
 
                         // 권장사항
-                        if (_progressData != null) ...[
+                        if (_progressData != null && _progressData!['recommendations'] != null) ...[
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(20),
@@ -440,7 +461,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 16),
-                                ...(_progressData!['recommendations'] as List).map((rec) => 
+                                ...((_progressData!['recommendations'] as List?) ?? []).map((rec) => 
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 8.0),
                                     child: Row(
@@ -454,7 +475,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: Text(
-                                            rec,
+                                            rec.toString(),
                                             style: const TextStyle(
                                               fontSize: 16,
                                               color: Color(0xFF8D6E63),
@@ -548,7 +569,20 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
   }
 
   Widget _buildMedicationHistoryTable() {
-    final history = _progressData!['medicationHistory'] as List;
+    final history = _progressData!['medicationHistory'] as List?;
+    if (history == null || history.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Text(
+          '복용 기록이 없습니다.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF8D6E63),
+          ),
+        ),
+      );
+    }
     
     return Column(
       children: [
@@ -647,7 +681,7 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: Text(
-                    day['date'],
+                    (day['date'] ?? '').toString(),
                     style: const TextStyle(fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
@@ -658,13 +692,13 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: day['morning'] ? Colors.green[100] : Colors.red[100],
+                    color: (day['morning'] == true) ? Colors.green[100] : Colors.red[100],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: Icon(
-                    day['morning'] ? Icons.check : Icons.close,
-                    color: day['morning'] ? Colors.green : Colors.red,
+                    (day['morning'] == true) ? Icons.check : Icons.close,
+                    color: (day['morning'] == true) ? Colors.green : Colors.red,
                     size: 16,
                   ),
                 ),
@@ -674,13 +708,13 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: day['lunch'] ? Colors.green[100] : Colors.red[100],
+                    color: (day['lunch'] == true) ? Colors.green[100] : Colors.red[100],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: Icon(
-                    day['lunch'] ? Icons.check : Icons.close,
-                    color: day['lunch'] ? Colors.green : Colors.red,
+                    (day['lunch'] == true) ? Icons.check : Icons.close,
+                    color: (day['lunch'] == true) ? Colors.green : Colors.red,
                     size: 16,
                   ),
                 ),
@@ -690,13 +724,13 @@ class _PatientManagementScreenState extends State<PatientManagementScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: day['evening'] ? Colors.green[100] : Colors.red[100],
+                    color: (day['evening'] == true) ? Colors.green[100] : Colors.red[100],
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey[300]!),
                   ),
                   child: Icon(
-                    day['evening'] ? Icons.check : Icons.close,
-                    color: day['evening'] ? Colors.green : Colors.red,
+                    (day['evening'] == true) ? Icons.check : Icons.close,
+                    color: (day['evening'] == true) ? Colors.green : Colors.red,
                     size: 16,
                   ),
                 ),
