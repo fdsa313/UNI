@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'app_termination_screen.dart';
 import '../services/api_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+
+class SettingsScreen extends StatefulWidget {
   final String? userName;
   
   const SettingsScreen({super.key, this.userName});
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   // 사용자 이름을 가져오는 함수
   String get _userName {
-    return userName ?? '돌쇠님';
+    return widget.userName ?? '돌쇠님';
   }
 
   void _showLogoutDialog(BuildContext context) {
@@ -262,6 +268,56 @@ class SettingsScreen extends StatelessWidget {
                                   backgroundColor: Colors.orange,
                                 ),
                               );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSettingItem(
+                            icon: Icons.link,
+                            title: '앱 종료 영상 URL 설정',
+                            subtitle: 'Google Drive 공유 링크 입력',
+                            onTap: () async {
+                              final controller = TextEditingController();
+                              final url = await showDialog<String>(
+                                context: context,
+                                builder: (ctx) {
+                                  return AlertDialog(
+                                    title: const Text('앱 종료 영상 URL'),
+                                    content: TextField(
+                                      controller: controller,
+                                      decoration: const InputDecoration(
+                                        hintText: '예: https://drive.google.com/file/d/FILE_ID/view?usp=sharing',
+                                      ),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('취소'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+                                        child: const Text('저장'),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (url != null && url.isNotEmpty) {
+                                await ApiService.saveExitVideoUrl(url);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('영상 URL이 저장되었습니다.')),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _buildSettingItem(
+                            icon: Icons.video_library,
+                            title: '앱 종료 영상 테스트',
+                            subtitle: '영상 재생 테스트',
+                            onTap: () {
+                              Navigator.of(context).pushNamed('/app-exit-video');
                             },
                           ),
 

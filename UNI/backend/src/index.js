@@ -418,6 +418,38 @@ app.post('/api/patients/:patientName/medication', async (req, res) => {
   }
 });
 
+// ===== 영상 API =====
+// 메모리 샘플 데이터 (개발용)
+const videosData = [
+  {
+    id: 'vid-1',
+    title: '가족의 응원 영상',
+    description: '앱 종료 시 재생되는 가족의 응원 메시지',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    thumbnailUrl: 'https://i.ytimg.com/vi/aqz-KE-bpKQ/hqdefault.jpg',
+    category: 'exit',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+// 모든 영상 목록
+app.get('/api/videos', (req, res) => {
+  res.json(videosData);
+});
+
+// 특정 영상 조회
+app.get('/api/videos/:id', (req, res) => {
+  const video = videosData.find(v => v.id === req.params.id);
+  if (!video) {
+    return res.status(404).json({
+      success: false,
+      message: '영상을 찾을 수 없습니다.'
+    });
+  }
+  res.json(video);
+});
+
 // 약물 복용 기록 조회 API
 app.get('/api/patients/:patientName/medication/:date', async (req, res) => {
   try {

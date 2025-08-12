@@ -34,8 +34,23 @@ class ApiService {
         
         // 로그인 성공 시 사용자 정보를 로컬에 저장
         if (data['success']) {
+          // 사용자 정보 저장
           await _saveUserData(data['data']['user']);
-          
+
+          // JWT 토큰 저장 (영상 API 인증에 사용)
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final token = data['data']['token'];
+            if (token is String && token.isNotEmpty) {
+              await prefs.setString('auth_token', token);
+              print('✅ 토큰 저장 성공');
+            } else {
+              print('⚠️ 토큰이 응답에 없습니다');
+            }
+          } catch (e) {
+            print('❌ 토큰 저장 실패: $e');
+          }
+
           // Supabase 세션 설정 시도
           try {
             print('Supabase 세션 설정 시도...');
@@ -164,6 +179,11 @@ class ApiService {
     // caregiver_password가 있었다면 다시 저장
     if (existingPassword != null) {
       await prefs.setString('caregiver_password', existingPassword);
+    }
+    
+    // JWT 토큰 저장 (영상 서비스에서 사용)
+    if (userData['token'] != null) {
+      await prefs.setString('auth_token', userData['token']);
     }
     
           // Supabase 세션 설정 (백엔드 로그인 후)
@@ -442,6 +462,38 @@ class ApiService {
       return response.statusCode == 201;
     } catch (e) {
       return false;
+    }
+  }
+
+  // 앱 종료 영상 URL 저장
+  static Future<void> saveExitVideoUrl(String url) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('exit_video_url', url);
+    } catch (e) {
+      print('❌ 앱 종료 영상 URL 저장 실패: $e');
+    }
+  }
+
+  // 앱 종료 영상 URL 조회
+  static Future<String?> getExitVideoUrl() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('exit_video_url');
+    } catch (e) {
+      print('❌ 앱 종료 영상 URL 조회 실패: $e');
+      return null;
+    }
+  }
+  
+  // JWT 토큰 가져오기
+  static Future<String?> getToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token');
+    } catch (e) {
+      print('❌ 토큰 가져오기 오류: $e');
+      return null;
     }
   }
 }

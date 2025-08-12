@@ -14,9 +14,13 @@ import 'screens/quiz_screen.dart';
 import 'screens/medication_screen.dart';
 import 'screens/progress_report_screen.dart';
 import 'screens/patient_management_screen.dart';
+import 'screens/app_exit_video_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+
   
   try {
     await Supabase.initialize(
@@ -49,6 +53,7 @@ class AlzheimerCareApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
+
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
@@ -92,6 +97,8 @@ class AlzheimerCareApp extends StatelessWidget {
           final userName = args is String ? args : null;
           return PatientManagementScreen(userName: userName);
         },
+        '/app-exit-video': (context) => const AppExitVideoScreen(),
+
       },
     );
   }

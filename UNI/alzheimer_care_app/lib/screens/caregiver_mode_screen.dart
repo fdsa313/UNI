@@ -4,6 +4,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_web/webview_flutter_web.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:alzheimer_care_app/screens/patient_management_screen.dart';
+import 'package:alzheimer_care_app/screens/patient_location_screen.dart';
 
 class CaregiverModeScreen extends StatefulWidget {
   final String? userName;
@@ -76,23 +77,7 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
   void _showLocationFinder(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('위치 찾기'),
-            backgroundColor: const Color(0xFFFFB74D),
-            foregroundColor: Colors.white,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          body: WebViewWidget(
-            controller: WebViewController()
-              ..loadRequest(
-                Uri.parse('https://map.naver.com'),
-              ),
-          ),
-        ),
+        builder: (context) => const PatientLocationScreen(),
       ),
     );
   }
@@ -409,8 +394,8 @@ class _CaregiverModeScreenState extends State<CaregiverModeScreen> {
                       _buildOptionItem(
                         context,
                         Icons.location_on,
-                        '위치 찾기',
-                        '네이버 지도로 위치 확인',
+                        '환자 위치 찾기',
+                        'GPS로 환자의 현재 위치 확인',
                         () => _showLocationFinder(context),
                       ),
                       _buildOptionItem(

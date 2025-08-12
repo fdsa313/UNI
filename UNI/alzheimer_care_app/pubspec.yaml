@@ -46,7 +46,7 @@ dependencies:
   webview_flutter_web: ^0.2.2+4
   
   # PDF 생성을 위한 패키지
-  syncfusion_flutter_pdf: ^24.2.9
+  syncfusion_flutter_pdf: ^30.2.4
   path_provider: ^2.1.2
   
   # OpenAI API 연동을 위한 패키지
@@ -57,6 +57,25 @@ dependencies:
   
   # Supabase를 위한 패키지
   supabase_flutter: ^2.3.4
+  
+  # 위치 추적을 위한 패키지
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
+  permission_handler: ^11.0.1
+  
+  # 지도 표시를 위한 패키지
+  google_maps_flutter: ^2.5.3
+  flutter_map: ^6.1.0
+  latlong2: ^0.9.0
+  
+  # 영상 재생을 위한 패키지
+  video_player: ^2.8.2
+  chewie: ^1.7.4
+  
+  # 다국어 지원을 위한 패키지
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
 
 # 폰트 설정
 fonts:
