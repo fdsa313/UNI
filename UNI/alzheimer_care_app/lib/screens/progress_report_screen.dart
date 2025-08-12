@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../services/openai_service.dart';
 import '../services/smart_analysis_service.dart';
 import '../services/api_service.dart'; // Added import for ApiService
+import '../services/pdf_service.dart'; // PDF 생성 서비스 추가
+import 'dart:io';
+import 'package:flutter/services.dart';
 
 // 채팅 메시지 모델 클래스
 class ChatMessage {
@@ -31,6 +34,7 @@ class _ProgressReportScreenState extends State<ProgressReportScreen> {
   String? _aiReport;
   final OpenAIService _openAIService = OpenAIService();
   final SmartAnalysisService _smartAnalysisService = SmartAnalysisService();
+  final PDFService _pdfService = PDFService(); // PDF 서비스 추가
   
   // 채팅 관련 상태 변수 추가
   final List<ChatMessage> _chatMessages = [];
@@ -404,10 +408,148 @@ class _ProgressReportScreenState extends State<ProgressReportScreen> {
     }
     
     if (totalQuestions == 0) return 0;
-    
-    int result = ((totalScore / totalQuestions) * 100).round();
-    print('DEBUG: totalScore=$totalScore, totalQuestions=$totalQuestions, result=$result%');
-    return result;
+    return ((totalScore / totalQuestions) * 100).round();
+  }
+
+  // PDF 생성 메서드
+  Future<void> _generatePDF() async {
+    if (_aiReport == null || _aiReport!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('먼저 AI 분석 보고서를 생성해주세요.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // PDF 생성
+      final String filePath = await _pdfService.generateAnalysisPDF(
+        patientName: _userName,
+        aiReport: _aiReport!,
+        progressData: _progressData ?? {},
+        reportType: 'ai',
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      // 성공 메시지
+      if (mounted) {
+        if (filePath.startsWith('web_generated')) {
+          // 웹 환경: 클립보드 복사 안내
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('PDF가 생성되었습니다! 클립보드에 복사되었습니다.'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: '사용법 보기',
+                onPressed: () {
+                  _showWebPDFUsageDialog(context);
+                },
+              ),
+            ),
+          );
+        } else {
+          // 모바일 환경: 파일 열기 옵션
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF가 생성되었습니다: ${filePath.split('/').last}'),
+              backgroundColor: Colors.green,
+              action: SnackBarAction(
+                label: '파일 열기',
+                onPressed: () {
+                  _openPDFFile(filePath);
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF 생성 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // PDF 파일 열기
+  void _openPDFFile(String filePath) {
+    // 플랫폼별 파일 열기 로직
+    // 웹에서는 다운로드, 모바일에서는 파일 뷰어
+    print('PDF 파일 경로: $filePath');
+    // TODO: 플랫폼별 파일 열기 구현
+  }
+
+  // 웹 환경에서 PDF 사용법 다이얼로그 표시
+  void _showWebPDFUsageDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('PDF 사용법'),
+          content: const Text(
+            '웹 환경에서는 PDF 파일을 직접 다운로드하여 사용할 수 있습니다.\n'
+            '클립보드에 복사된 PDF는 브라우저의 기본 다운로드 메뉴를 통해 접근할 수 있습니다.\n'
+            '파일을 다운로드하여 원하는 위치에 저장하고 열어보세요.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('닫기'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // AI 보고서 텍스트를 클립보드에 복사하는 메서드
+  Future<void> _copyReportToClipboard() async {
+    if (_aiReport == null || _aiReport!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI 보고서가 없습니다.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await Clipboard.setData(ClipboardData(text: _aiReport!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI 보고서가 클립보드에 복사되었습니다!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('AI 보고서 복사에 실패했습니다: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -527,13 +669,51 @@ class _ProgressReportScreenState extends State<ProgressReportScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'AI 분석 보고서',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFE65100),
-                                  ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'AI 분석 보고서',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFE65100),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: [
+                                        // 텍스트 복사 버튼
+                                        ElevatedButton.icon(
+                                          onPressed: () => _copyReportToClipboard(),
+                                          icon: const Icon(Icons.copy),
+                                          label: const Text('복사'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFF4CAF50),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // PDF 생성 버튼
+                                        ElevatedButton.icon(
+                                          onPressed: _generatePDF,
+                                          icon: const Icon(Icons.picture_as_pdf),
+                                          label: const Text('PDF'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFE65100),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
